@@ -59,7 +59,23 @@ def _find_tracker_header_row(rows):
     for row_index, row in enumerate(rows):
         headers = _find_header_indexes(row)
         if {"Name", "Reading", "Writing", "Overall Maths judgement"}.issubset(headers):
-            return row_index, headers
+            return row_index, row_index + 1, headers
+
+    assessment_headers = None
+    for row_index, row in enumerate(rows):
+        headers = _find_header_indexes(row)
+        if {"Reading", "Writing", "Overall Maths judgement"}.issubset(headers):
+            assessment_headers = headers
+            break
+
+    if assessment_headers:
+        for row_index, row in enumerate(rows):
+            headers = _find_header_indexes(row)
+            if "Name" in headers:
+                combined_headers = dict(assessment_headers)
+                combined_headers["Name"] = headers["Name"]
+                return row_index, row_index + 1, combined_headers
+
     raise ValueError("Could not find the tracker header row with Name, Reading, Writing, and Overall Maths judgement.")
 
 
@@ -67,10 +83,10 @@ def load_attainment(path):
     workbook = load_workbook(Path(path), data_only=True)
     sheet = workbook[workbook.sheetnames[0]]
     rows = list(sheet.iter_rows(values_only=True))
-    header_row_index, headers = _find_tracker_header_row(rows)
+    _, first_data_row_index, headers = _find_tracker_header_row(rows)
 
     records = {}
-    for row in rows[header_row_index + 1 :]:
+    for row in rows[first_data_row_index:]:
         raw_name = row[headers["Name"]]
         if not raw_name:
             continue
@@ -105,4 +121,3 @@ def load_students(attendance_path, attainment_path):
 
         students.append(StudentRecord(**combined))
     return students, warnings
-
